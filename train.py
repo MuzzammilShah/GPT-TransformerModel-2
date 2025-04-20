@@ -90,6 +90,26 @@ class GPT(nn.Module):
         ))
         self.lm_head = nn.Linear( config.n_embd, config.vocab_size, bias=False)
 
+    def forward(self, idx):
+
+        B, T = idx.size()
+
+        assert T <= self.config.block_size, f"Cannot forward this sequence which is of length {T} as the block size is only {self.config.block_size}"
+
+        pos = torch.arange(0, T, dtype=torch.long, device=idx.device)
+        pos_emd = self.transformer.wpe(pos)
+        tok_emb = self.transformer.wte(idx)
+        x = tok_emb + pos_emd
+
+        for block in self.transformer.h:
+            block(x)
+
+        x = self.transformer.ln_f(x)
+
+        logits = self.transformer.lm_head(x)
+
+        return logits
+    
     
     @classmethod
     def from_pretrained(cls, model_type):
