@@ -170,10 +170,18 @@ class GPT(nn.Module):
 # model = GPT.from_pretrained('gpt2')
 # print("didn't crash yay!")
 
+
+device = "cpu"
+if torch.cuda.is_available():
+    device = "cuda"
+
+print(f"Device used: {device}")
+
 num_return_sequences = 5
 max_length = 30
 
-model = GPT.from_pretrained("gpt2")
+#model = GPT.from_pretrained("gpt2")
+model = GPT(GPTConfig())
 model.eval()
 model.to("cuda")
 
