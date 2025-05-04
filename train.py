@@ -90,7 +90,7 @@ class GPT(nn.Module):
         ))
         self.lm_head = nn.Linear( config.n_embd, config.vocab_size, bias=False)
 
-    def forward(self, idx):
+    def forward(self, idx, targets=None):
 
         B, T = idx.size()
 
@@ -108,7 +108,11 @@ class GPT(nn.Module):
 
         logits = self.lm_head(x)
 
-        return logits
+        loss = None
+        if targets is not None:
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+
+        return logits, loss
     
     
     @classmethod
@@ -198,13 +202,20 @@ y = buf[1:].view(B, T)
 
 #model = GPT.from_pretrained("gpt2")
 model = GPT(GPTConfig())
+
 model.eval()
 model.to(device)
 
 #====================
 x = x.to(device)
-logits = model(x)
-print(logits.shape)
+y = y.to(device)
+
+# logits = model(x)
+logits, loss = model(x, y)
+
+# print(logits.shape)
+print(loss)
+
 import sys; sys.exit(0)
 #====================
 
