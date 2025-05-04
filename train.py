@@ -196,6 +196,8 @@ tokens = enc.encode(data)
 
 B, T = 4, 32
 buf = torch.tensor(tokens[:B*T + 1])
+buf = buf.to(device)
+
 x = buf[:-1].view(B, T)
 y = buf[1:].view(B, T)
 #====================
@@ -207,14 +209,22 @@ model.eval()
 model.to(device)
 
 #====================
-x = x.to(device)
-y = y.to(device)
+# x = x.to(device)
+# y = y.to(device)
 
 # logits = model(x)
-logits, loss = model(x, y)
+# logits, loss = model(x, y)
 
 # print(logits.shape)
-print(loss)
+#print(loss)
+
+optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
+for i in range(50):
+    optimizer.zero_grad()
+    logits, loss = model(x, y)
+    loss.backward()
+    optimizer.step()
+    print(f"Step {i} -> loss value: {loss.item()}")
 
 import sys; sys.exit(0)
 #====================
