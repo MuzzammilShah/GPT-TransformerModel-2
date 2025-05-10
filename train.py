@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 from torch.nn import functional as F
+import tiktoken
 
 #=========================================================
 
@@ -174,6 +175,38 @@ class GPT(nn.Module):
 # model = GPT.from_pretrained('gpt2')
 # print("didn't crash yay!")
 
+class DataLoaderLite:
+
+    def __init__(self, B, T):
+        self.B = B
+        self.T = T
+
+        with open('cleaned_dataset.txt', 'r') as f:
+            text = f.read()
+        
+        enc = tiktoken.get_encoding('gpt2')
+        tokens = enc.encode(text)
+        self.tokens = torch.tensor(tokens)
+
+        print(f"Loaded {len(self.tokens)} tokens")
+        print(f"One epoch will process {len(self.tokens) // (B*T)} batches")
+
+        self.current_postion = 0
+    
+    def next_batch(self):
+
+        B, T = self.B, self.T
+        buf = self.tokens[self.current_postion : self.current_postion+B*T+1]
+        x = (buf[:-1]).view(B, T)
+        y = (buf[1:]).view(B, T)
+
+        self.current_postion += B*T
+
+        if self.current_postion + (B*T+1) > len(self.tokens):
+            self.current_postion = 0
+
+        return x, y
+
 
 device = "cpu"
 if torch.cuda.is_available():
@@ -184,23 +217,7 @@ print(f"Device used: {device}")
 num_return_sequences = 5
 max_length = 30
 
-#====================
-import tiktoken
-enc = tiktoken.get_encoding('gpt2')
-
-with open('cleaned_dataset.txt', 'r') as f:
-    text = f.read()
-
-data = text[:1000]
-tokens = enc.encode(data)
-
-B, T = 4, 32
-buf = torch.tensor(tokens[:B*T + 1])
-buf = buf.to(device)
-
-x = buf[:-1].view(B, T)
-y = buf[1:].view(B, T)
-#====================
+train_loader = DataLoaderLite(B=4, T=32)
 
 #model = GPT.from_pretrained("gpt2")
 model = GPT(GPTConfig())
@@ -209,17 +226,10 @@ model.eval()
 model.to(device)
 
 #====================
-# x = x.to(device)
-# y = y.to(device)
-
-# logits = model(x)
-# logits, loss = model(x, y)
-
-# print(logits.shape)
-#print(loss)
-
 optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
 for i in range(50):
+    x, y = train_loader.next_batch()
+    x, y = x.to(device), y.to(device)
     optimizer.zero_grad()
     logits, loss = model(x, y)
     loss.backward()
@@ -228,8 +238,6 @@ for i in range(50):
 
 import sys; sys.exit(0)
 #====================
-
-import tiktoken
 
 enc = tiktoken.get_encoding("gpt2")
 tokens = enc.encode("Hello, I'm a language model,")
