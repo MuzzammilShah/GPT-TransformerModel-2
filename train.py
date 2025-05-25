@@ -244,6 +244,8 @@ if torch.cuda.is_available():
 
 train_loader = DataLoaderLite(B=2, T=1024)
 
+torch.set_float32_matmul_precision('high')
+
 #model = GPT.from_pretrained("gpt2")
 model = GPT(GPTConfig())
 
@@ -268,7 +270,8 @@ for i in range(50):
     torch.cuda.synchronize()
     t1 = time.time()
     dt = (t1 - t0)*1000
-    print(f"step {i}, loss: {loss.item()}, dt: {dt:.2f}ms")
+    tokens_per_sec = (train_loader.B * train_loader.T) / (t1 - t0)
+    print(f"step {i}, loss: {loss.item()}, dt: {dt:.2f}ms, tok/sec: {tokens_per_sec:.2f}")
 
 import sys; sys.exit(0)
 #====================
